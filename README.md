@@ -1,4 +1,4 @@
-# [TorchIO](http://torchio.rtfd.io/)
+# [TorchIO](http://torchio.rtfd.io/) - for those who only have access to torch 1.1 😭
 
 > *Tools like TorchIO are a symptom of the maturation of medical AI research using deep learning techniques*.
 
