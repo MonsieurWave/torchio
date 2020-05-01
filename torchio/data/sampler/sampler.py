@@ -4,13 +4,13 @@ from typing import Union, Sequence, Generator, Tuple
 
 import numpy as np
 import torch
-from torch.utils.data import IterableDataset
+from torch.utils.data import Dataset
 
 from ...torchio import DATA
 from ...utils import to_tuple
 from ..subject import Subject
 
-class ImageSampler(IterableDataset):
+class ImageSampler(Dataset):
     r"""Extract random patches from a volume.
 
     Args:
