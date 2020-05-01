@@ -1,4 +1,4 @@
-# [TorchIO](http://torchio.rtfd.io/)
+# [TorchIO](http://torchio.rtfd.io/) - for those who only have access to torch 1.1 😭
 
 [![PyPI downloads](https://img.shields.io/pypi/dm/torchio.svg?label=PyPI%20downloads&logo=python&logoColor=white)](https://pypi.org/project/torchio/)
 [![PyPI version](https://img.shields.io/pypi/v/torchio?label=PyPI%20version&logo=python&logoColor=white)](https://pypi.org/project/torchio/)
