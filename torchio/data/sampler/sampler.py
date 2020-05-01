@@ -1,15 +1,11 @@
 from typing import Tuple, Optional, Generator
-
 import numpy as np
-
 from ... import TypePatchSize
 from ...data.subject import Subject
 from ...utils import to_tuple
 
-
 class PatchSampler:
     r"""Base class for TorchIO samplers.
-
     Args:
         patch_size: Tuple of integers :math:`(d, h, w)` to generate patches
             of size :math:`d \times h \times w`.
