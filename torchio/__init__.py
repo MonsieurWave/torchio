@@ -8,7 +8,7 @@ from . import utils
 from .torchio import *
 from .transforms import *
 from .data import io, sampler, inference, ImagesDataset, Image, Queue, Subject
-from . import datasets
+# from . import datasets
 from . import reference
 
 print('If you use TorchIO for your research, please cite the following paper:')
