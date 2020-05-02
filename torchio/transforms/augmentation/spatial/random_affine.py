@@ -160,9 +160,9 @@ class RandomAffine(RandomTransform):
             interpolation: Interpolation,
             ) -> torch.Tensor:
         assert len(tensor) == 1
-        if tensor.ndim == 4:
+        if len(tensor.shape) == 4:
             tensor = self.affine_transform(tensor, affine, scaling_params, rotation_params, interpolation)
-        elif tensor.ndim == 5:
+        elif len(tensor.shape) == 5:
             for channel in range(tensor.shape[-1]):
                 tensor[..., channel] = self.affine_transform(tensor[..., channel], affine, scaling_params, rotation_params, interpolation)
         else:
@@ -179,7 +179,7 @@ class RandomAffine(RandomTransform):
             interpolation: Interpolation,
             ) -> torch.Tensor:
 
-        assert tensor.ndim == 4
+        assert len(tensor.shape) == 4
         assert len(tensor) == 1
 
         image = self.nib_to_sitk(tensor[0], affine)
