@@ -66,13 +66,15 @@ class RandomAffine(RandomTransform):
             image_interpolation: Interpolation = Interpolation.LINEAR,
             p: float = 1,
             seed: Optional[int] = None,
-            ):
-        super().__init__(p=p, seed=seed)
+            is_tensor=False,
+    ):
+        super().__init__(p=p, seed=seed, is_tensor=is_tensor)
         self.scales = scales
         self.degrees = self.parse_degrees(degrees)
         self.isotropic = isotropic
         self.default_pad_value = self.parse_default_value(default_pad_value)
         self.interpolation = self.parse_interpolation(image_interpolation)
+        self.is_tensor = is_tensor
 
     @staticmethod
     def parse_default_value(value: Union[str, float]) -> Union[str, float]:
@@ -85,26 +87,36 @@ class RandomAffine(RandomTransform):
         raise ValueError(message)
 
     def apply_transform(self, sample: Subject) -> dict:
-        sample.check_consistent_shape()
         scaling_params, rotation_params = self.get_params(
             self.scales, self.degrees, self.isotropic)
         random_parameters_dict = {
             'scaling': scaling_params,
             'rotation': rotation_params,
         }
-        for image_dict in sample.get_images(intensity_only=False):
-            if image_dict[TYPE] == LABEL:
-                interpolation = Interpolation.NEAREST
-            else:
-                interpolation = self.interpolation
-            image_dict[DATA] = self.apply_affine_transform(
-                image_dict[DATA],
-                image_dict[AFFINE],
+
+        if not self.is_tensor:
+            sample.check_consistent_shape()
+            for image_dict in sample.get_images(intensity_only=False):
+                if image_dict[TYPE] == LABEL:
+                    interpolation = Interpolation.NEAREST
+                else:
+                    interpolation = self.interpolation
+                image_dict[DATA] = self.apply_affine_transform(
+                    image_dict[DATA],
+                    image_dict[AFFINE],
+                    scaling_params,
+                    rotation_params,
+                    interpolation,
+                )
+            sample.add_transform(self, random_parameters_dict)
+        else:
+            sample = self.apply_affine_transform(
+                sample,
+                np.identity(4),
                 scaling_params,
                 rotation_params,
-                interpolation,
+                self.interpolation,
             )
-        sample.add_transform(self, random_parameters_dict)
         return sample
 
     @staticmethod
@@ -147,6 +159,26 @@ class RandomAffine(RandomTransform):
             rotation_params: List[float],
             interpolation: Interpolation,
             ) -> torch.Tensor:
+        assert len(tensor) == 1
+        if tensor.ndim == 4:
+            tensor = self.affine_transform(tensor, affine, scaling_params, rotation_params, interpolation)
+        elif tensor.ndim == 5:
+            for channel in range(tensor.shape[-1]):
+                tensor[..., channel] = self.affine_transform(tensor[..., channel], affine, scaling_params, rotation_params, interpolation)
+        else:
+            raise Exception('Input dimension must be either (1, x, y, z) or (1, x, y, z, c)')
+        return tensor
+
+
+    def affine_transform(
+            self,
+            tensor: torch.Tensor,
+            affine: np.ndarray,
+            scaling_params: List[float],
+            rotation_params: List[float],
+            interpolation: Interpolation,
+            ) -> torch.Tensor:
+
         assert tensor.ndim == 4
         assert len(tensor) == 1
 

@@ -12,7 +12,7 @@ class RandomNoise(RandomTransform):
     Args:
         std: Standard deviation :math:`\sigma` of the Gaussian distribution
             from which the noise is sampled.
-            If two values :math:`(a, b)` are providede,
+            If two values :math:`(a, b)` are provided,
             then :math:`\sigma \sim \mathcal{U}(a, b)`.
         p: Probability that this transform will be applied.
         seed: See :py:class:`~torchio.transforms.augmentation.RandomTransform`.
@@ -22,8 +22,9 @@ class RandomNoise(RandomTransform):
             std: Tuple[float, float] = (0, 0.25),
             p: float = 1,
             seed: Optional[int] = None,
-            ):
-        super().__init__(p=p, seed=seed)
+            is_tensor=False,
+    ):
+        super().__init__(p=p, seed=seed, is_tensor=is_tensor)
         self.std_range = self.parse_range(std, 'std')
         if any(np.array(self.std_range) < 0):
             message = (
@@ -34,12 +35,16 @@ class RandomNoise(RandomTransform):
 
     def apply_transform(self, sample: Subject) -> dict:
         random_parameters_images_dict = {}
-        for image_name, image_dict in sample.get_images_dict().items():
-            std = self.get_params(self.std_range)
-            random_parameters_dict = {'std': std}
-            random_parameters_images_dict[image_name] = random_parameters_dict
-            image_dict[DATA] = add_noise(image_dict[DATA], std)
-        sample.add_transform(self, random_parameters_images_dict)
+        std = self.get_params(self.std_range)
+        if not self.is_tensor:
+            sample.check_consistent_shape()
+            for image_name, image_dict in sample.get_images_dict().items():
+                random_parameters_dict = {'std': std}
+                random_parameters_images_dict[image_name] = random_parameters_dict
+                image_dict[DATA] = add_noise(image_dict[DATA], std)
+            sample.add_transform(self, random_parameters_images_dict)
+        else:
+            sample = add_noise(sample, std)
         return sample
 
     @staticmethod

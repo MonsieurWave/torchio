@@ -23,28 +23,36 @@ class RandomFlip(RandomTransform):
             flip_probability: float = 0.5,
             p: float = 1,
             seed: Optional[int] = None,
+            is_tensor = False
             ):
-        super().__init__(p=p, seed=seed)
+        super().__init__(p=p, seed=seed, is_tensor=is_tensor)
         self.axes = self.parse_axes(axes)
         self.flip_probability = self.parse_probability(
             flip_probability,
         )
+        self.is_tensor = is_tensor
 
     def apply_transform(self, sample: Subject) -> dict:
         axes_to_flip_hot = self.get_params(self.axes, self.flip_probability)
         random_parameters_dict = {'axes': axes_to_flip_hot}
-        for image_dict in sample.get_images(intensity_only=False):
-            tensor = image_dict[DATA]
-            dims = []
-            for dim, flip_this in enumerate(axes_to_flip_hot):
-                if not flip_this:
-                    continue
-                actual_dim = dim + 1  # images are 4D
-                dims.append(actual_dim)
-            tensor = torch.flip(tensor, dims=dims)
-            image_dict[DATA] = tensor
-        sample.add_transform(self, random_parameters_dict)
-        return sample
+        if self.is_tensor:
+            return self.flip_dimensions(sample, axes_to_flip_hot)
+        else:
+            for image_dict in sample.get_images(intensity_only=False):
+                tensor = image_dict[DATA]
+                image_dict[DATA] = self.flip_dimensions(tensor, axes_to_flip_hot)
+            sample.add_transform(self, random_parameters_dict)
+            return sample
+
+    def flip_dimensions(self, tensor, axes_to_flip_hot):
+        dims = []
+        for dim, flip_this in enumerate(axes_to_flip_hot):
+            if not flip_this:
+                continue
+            actual_dim = dim + 1  # images are 4D
+            dims.append(actual_dim)
+        tensor = torch.flip(tensor, dims=dims)
+        return tensor
 
     @staticmethod
     def get_params(axes: Tuple[int, ...], probability: float) -> List[bool]:

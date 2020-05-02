@@ -117,14 +117,16 @@ class RandomElasticDeformation(RandomTransform):
             image_interpolation: Interpolation = Interpolation.LINEAR,
             p: float = 1,
             seed: Optional[int] = None,
+            is_tensor = False,
             ):
-        super().__init__(p=p, seed=seed)
+        super().__init__(p=p, seed=seed, is_tensor=is_tensor)
         self._bspline_transformation = None
         self.num_control_points = to_tuple(num_control_points, length=3)
         self.parse_control_points(self.num_control_points)
         self.max_displacement = to_tuple(max_displacement, length=3)
         self.parse_max_displacement(self.max_displacement)
         self.num_locked_borders = locked_borders
+        self.is_tensor = is_tensor
         if locked_borders not in (0, 1, 2):
             raise ValueError('locked_borders must be 0, 1, or 2')
         if locked_borders == 2 and 4 in self.num_control_points:
@@ -214,28 +216,54 @@ class RandomElasticDeformation(RandomTransform):
             warnings.warn(message, RuntimeWarning)
 
     def apply_transform(self, sample: Subject) -> dict:
-        sample.check_consistent_shape()
         bspline_params = self.get_params(
             self.num_control_points,
             self.max_displacement,
             self.num_locked_borders,
         )
         random_parameters_dict = {'coarse_grid': bspline_params}
-        for image_dict in sample.get_images(intensity_only=False):
-            if image_dict[TYPE] == LABEL:
-                interpolation = Interpolation.NEAREST
-            else:
-                interpolation = self.interpolation
-            image_dict[DATA] = self.apply_bspline_transform(
-                image_dict[DATA],
-                image_dict[AFFINE],
+        if not self.is_tensor:
+            sample.check_consistent_shape()
+            for image_dict in sample.get_images(intensity_only=False):
+                if image_dict[TYPE] == LABEL:
+                    interpolation = Interpolation.NEAREST
+                else:
+                    interpolation = self.interpolation
+                image_dict[DATA] = self.apply_bspline_transform(
+                    image_dict[DATA],
+                    image_dict[AFFINE],
+                    bspline_params,
+                    interpolation,
+                )
+            sample.add_transform(self, random_parameters_dict)
+        else:
+            sample = self.apply_bspline_transform(
+                sample,
+                np.identity(4),
                 bspline_params,
-                interpolation,
+                self.interpolation
+
             )
-        sample.add_transform(self, random_parameters_dict)
         return sample
 
     def apply_bspline_transform(
+            self,
+            tensor: torch.Tensor,
+            affine: np.ndarray,
+            bspline_params: np.ndarray,
+            interpolation: Interpolation,
+            ) -> torch.Tensor:
+        assert len(tensor) == 1
+        if tensor.ndim == 4:
+            tensor = self.bspline_transform(tensor, affine, bspline_params, interpolation)
+        elif tensor.ndim == 5:
+            for channel in range(tensor.shape[-1]):
+                tensor[..., channel] = self.bspline_transform(tensor[..., channel], affine, bspline_params, interpolation)
+        else:
+            raise Exception('Input dimension must be either (1, x, y, z) or (1, x, y, z, c)')
+        return tensor
+
+    def bspline_transform(
             self,
             tensor: torch.Tensor,
             affine: np.ndarray,

@@ -22,12 +22,14 @@ class Transform(ABC):
     Args:
         p: Probability that this transform will be applied.
     """
-    def __init__(self, p: float = 1):
+    def __init__(self, p: float = 1, is_tensor = False):
+        self.is_tensor = is_tensor
         self.probability = self.parse_probability(p)
 
     def __call__(self, sample: Subject):
         """Transform a sample and return the result."""
-        self.parse_sample(sample)
+        if not self.is_tensor:
+            self.parse_sample(sample)
         if torch.rand(1).item() > self.probability:
             return sample
         sample = deepcopy(sample)
