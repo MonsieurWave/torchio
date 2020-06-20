@@ -201,7 +201,7 @@ class RandomAffine(RandomTransform):
             interpolation: Interpolation,
             center_lps: Optional[TypeTripletFloat] = None,
             ) -> torch.Tensor:
-        assert tensor.ndim == 4
+        assert tensor.dim() == 4
         assert len(tensor) == 1
 
         image = self.nib_to_sitk(tensor[0], affine)
