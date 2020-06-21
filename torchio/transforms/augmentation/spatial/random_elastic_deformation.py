@@ -115,14 +115,16 @@ class RandomElasticDeformation(RandomTransform):
             image_interpolation: str = 'linear',
             p: float = 1,
             seed: Optional[int] = None,
+            is_tensor = False,
             ):
-        super().__init__(p=p, seed=seed)
+        super().__init__(p=p, seed=seed, is_tensor=is_tensor)
         self._bspline_transformation = None
         self.num_control_points = to_tuple(num_control_points, length=3)
         self.parse_control_points(self.num_control_points)
         self.max_displacement = to_tuple(max_displacement, length=3)
         self.parse_max_displacement(self.max_displacement)
         self.num_locked_borders = locked_borders
+        self.is_tensor = is_tensor
         if locked_borders not in (0, 1, 2):
             raise ValueError('locked_borders must be 0, 1, or 2')
         if locked_borders == 2 and 4 in self.num_control_points:
@@ -212,7 +214,6 @@ class RandomElasticDeformation(RandomTransform):
             warnings.warn(message, RuntimeWarning)
 
     def apply_transform(self, sample: Subject) -> dict:
-        sample.check_consistent_shape()
         bspline_params = self.get_params(
             self.num_control_points,
             self.max_displacement,
@@ -229,7 +230,8 @@ class RandomElasticDeformation(RandomTransform):
                 image[DATA],
                 image[AFFINE],
                 bspline_params,
-                interpolation,
+                self.interpolation
+
             )
         random_parameters_dict = {'coarse_grid': bspline_params}
         sample.add_transform(self, random_parameters_dict)

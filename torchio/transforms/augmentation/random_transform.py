@@ -24,8 +24,9 @@ class RandomTransform(Transform):
             self,
             p: float = 1,
             seed: Optional[int] = None,
+            is_tensor = False
             ):
-        super().__init__(p=p)
+        super().__init__(p=p, is_tensor=is_tensor)
         self._seed = seed
 
     def __call__(self, sample: Subject):

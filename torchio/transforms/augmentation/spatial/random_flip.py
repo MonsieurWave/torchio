@@ -25,12 +25,14 @@ class RandomFlip(RandomTransform):
             flip_probability: float = 0.5,
             p: float = 1,
             seed: Optional[int] = None,
+            is_tensor = False
             ):
-        super().__init__(p=p, seed=seed)
+        super().__init__(p=p, seed=seed, is_tensor=is_tensor)
         self.axes = self.parse_axes(axes)
         self.flip_probability = self.parse_probability(
             flip_probability,
         )
+        self.is_tensor = is_tensor
 
     def apply_transform(self, sample: Subject) -> dict:
         axes_to_flip_hot = self.get_params(self.axes, self.flip_probability)

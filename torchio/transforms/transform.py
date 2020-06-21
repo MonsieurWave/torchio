@@ -28,7 +28,8 @@ class Transform(ABC):
     Args:
         p: Probability that this transform will be applied.
     """
-    def __init__(self, p: float = 1):
+    def __init__(self, p: float = 1, is_tensor = False):
+        self.is_tensor = is_tensor
         self.probability = self.parse_probability(p)
 
     def __call__(self, data: Union[Subject, torch.Tensor]):

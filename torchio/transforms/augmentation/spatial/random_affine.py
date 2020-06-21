@@ -82,8 +82,9 @@ class RandomAffine(RandomTransform):
             image_interpolation: str = 'linear',
             p: float = 1,
             seed: Optional[int] = None,
-            ):
-        super().__init__(p=p, seed=seed)
+            is_tensor=False,
+    ):
+        super().__init__(p=p, seed=seed, is_tensor=is_tensor)
         self.scales = scales
         self.degrees = self.parse_degrees(degrees)
         self.translation = self.parse_range(translation, 'translation')
@@ -97,6 +98,7 @@ class RandomAffine(RandomTransform):
         self.use_image_center = center == 'image'
         self.default_pad_value = self.parse_default_value(default_pad_value)
         self.interpolation = self.parse_interpolation(image_interpolation)
+        self.is_tensor = is_tensor
 
     @staticmethod
     def parse_default_value(value: Union[str, float]) -> Union[str, float]:
