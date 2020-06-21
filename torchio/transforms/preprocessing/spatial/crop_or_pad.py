@@ -5,7 +5,6 @@ from deprecated import deprecated
 from .pad import Pad
 from .crop import Crop
 from .bounds_transform import BoundsTransform, TypeShape, TypeSixBounds
-from ....torchio import DATA
 from ....data.subject import Subject
 from ....utils import round_up
 
@@ -19,8 +18,7 @@ class CropOrPad(BoundsTransform):
     Args:
         target_shape: Tuple :math:`(D, H, W)`. If a single value :math:`N` is
             provided, then :math:`D = H = W = N`.
-        padding_mode: See :py:class:`~torchio.transforms.Pad`.
-        padding_fill: Same as :attr:`fill` in
+        padding_mode: Same as :attr:`padding_mode` in
             :py:class:`~torchio.transforms.Pad`.
         mask_name: If ``None``, the centers of the input and output volumes
             will be the same.
@@ -37,27 +35,25 @@ class CropOrPad(BoundsTransform):
         ...     torchio.Image('heart_mask', 'subject_a_heart_seg.nii.gz', torchio.LABEL),
         ... )
         >>> sample = torchio.ImagesDataset([subject])[0]
-        >>> sample['chest_ct'][torchio.DATA].shape
+        >>> sample['chest_ct'].shape
         torch.Size([1, 512, 512, 289])
         >>> transform = CropOrPad(
         ...     (120, 80, 180),
         ...     mask_name='heart_mask',
         ... )
         >>> transformed = transform(sample)
-        >>> transformed['chest_ct'][torchio.DATA].shape
+        >>> transformed['chest_ct'].shape
         torch.Size([1, 120, 80, 180])
     """
     def __init__(
             self,
             target_shape: Union[int, TypeShape],
-            padding_mode: str = 'constant',
-            padding_fill: Optional[float] = None,
+            padding_mode: Union[str, float] = 0,
             mask_name: Optional[str] = None,
             p: float = 1,
             ):
         super().__init__(target_shape, p=p)
         self.padding_mode = padding_mode
-        self.padding_fill = padding_fill
         if mask_name is not None and not isinstance(mask_name, str):
             message = (
                 'If mask_name is not None, it must be a string,'
@@ -102,7 +98,7 @@ class CropOrPad(BoundsTransform):
         """Return the shape of the first image in the sample."""
         sample.check_consistent_shape()
         for image_dict in sample.get_images(intensity_only=False):
-            data = image_dict[DATA].shape[1:]  # remove channels dimension
+            data = image_dict.spatial_shape  # remove channels dimension
             break
         return data
 
@@ -181,7 +177,7 @@ class CropOrPad(BoundsTransform):
             warnings.warn(message)
             return self._compute_center_crop_or_pad(sample=sample)
 
-        mask = sample[self.mask_name][DATA].numpy()
+        mask = sample[self.mask_name].numpy()
 
         if not np.any(mask):
             message = (
@@ -229,7 +225,7 @@ class CropOrPad(BoundsTransform):
     def apply_transform(self, sample: Subject) -> dict:
         padding_params, cropping_params = self.compute_crop_or_pad(sample)
         padding_kwargs = dict(
-            padding_mode=self.padding_mode, fill=self.padding_fill)
+            padding_mode=self.padding_mode)
         if padding_params is not None:
             sample = Pad(padding_params, **padding_kwargs)(sample)
         if cropping_params is not None:

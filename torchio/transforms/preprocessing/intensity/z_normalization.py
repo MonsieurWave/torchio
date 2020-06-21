@@ -1,8 +1,7 @@
-from typing import Union
 import torch
 from ....data.subject import Subject
-from ....torchio import DATA, TypeCallable
-from . import NormalizationTransform
+from ....torchio import DATA
+from .normalization_transform import NormalizationTransform, TypeMaskingMethod
 
 
 class ZNormalization(NormalizationTransform):
@@ -15,7 +14,7 @@ class ZNormalization(NormalizationTransform):
     """
     def __init__(
             self,
-            masking_method: Union[str, TypeCallable, None] = None,
+            masking_method: TypeMaskingMethod = None,
             p: float = 1,
             ):
         super().__init__(masking_method=masking_method, p=p)
@@ -26,16 +25,25 @@ class ZNormalization(NormalizationTransform):
             image_name: str,
             mask: torch.Tensor,
             ) -> None:
-        image_dict = sample[image_name]
-        image_dict[DATA] = self.znorm(
-            image_dict[DATA],
+        image = sample[image_name]
+        standardized = self.znorm(
+            image[DATA],
             mask,
         )
+        if standardized is None:
+            message = (
+                'Standard deviation is 0 for masked values'
+                f' in image "{image_name}" ({image.path})'
+            )
+            raise RuntimeError(message)
+        image[DATA] = standardized
 
     @staticmethod
     def znorm(tensor: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         values = tensor[mask]
         mean, std = values.mean(), values.std()
+        if std == 0:
+            return None
         tensor = tensor - mean
         tensor = tensor / std
         return tensor

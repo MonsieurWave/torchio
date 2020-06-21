@@ -5,26 +5,30 @@ The :py:mod:`torchio.transforms` module should remind users of
 :py:mod:`torchvision.transforms`.
 
 TorchIO transforms take as input samples generated
-by an :py:class:`~torchio.data.dataset.ImagesDataset`.
+by an :py:class:`~torchio.data.dataset.ImagesDataset`,
+4D PyTorch tensors
+or 4D NumPy arrays (see :py:class:`~torchio.transforms.Transform`).
 
 For example::
 
+   >>> import torch
    >>> from torchio.transforms import RandomAffine
-   >>> from torchio.datasets import IXITiny
    >>> affine_transform = RandomAffine()
-   >>> dataset = IXITiny('ixi', download=True)
-   >>> sample = dataset[0]
-   >>> transformed_sample = affine_transform(sample)
+   >>> tensor = torch.rand(1, 256, 256, 159)
+   >>> transformed_sample = affine_transform(tensor)
 
 
-Transforms can be applied from the command line using :ref:`torchio-transform`.
+Transforms can also be applied from the command line using
+:ref:`torchio-transform`.
 
 All transforms inherit from :py:class:`torchio.transforms.Transform`:
 
 .. currentmodule:: torchio.transforms
 
 .. autoclass:: Transform
+   :members:
 
+   .. automethod:: __call__
 
 
 
@@ -38,16 +42,16 @@ Some transforms such as
 :py:class:`~torchio.transforms.RandomMotion`
 need to interpolate intensity values during resampling.
 
-The available interpolation strategies are enumerated in
+The available interpolation strategies can be inferred from the elements of
 :class:`torchio.transforms.interpolation.Interpolation`.
 
-``Interpolation.NEAREST`` can be used for quick experimentation as it is very
+``'nearest'`` can be used for quick experimentation as it is very
 fast, but produces relatively poor results.
 
-``Interpolation.LINEAR``, defaut in TorchIO, is usually a good compromise
+``'linear'``, default in TorchIO, is usually a good compromise
 between image quality and speed to be used for data augmentation during training.
 
-Methods such as ``Interpolation.BSPLINE`` or ``Interpolation.LANCZOS`` generate
+Methods such as ``'bspline'`` or ``'lanczos'`` generate
 high-quality results, but are generally slower. They can be used to obtain
 optimal resampling results during offline data preprocessing.
 

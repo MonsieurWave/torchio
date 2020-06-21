@@ -15,6 +15,8 @@ class RandomFlip(RandomTransform):
             computed on a per-axis basis.
         p: Probability that this transform will be applied.
         seed: See :py:class:`~torchio.transforms.augmentation.RandomTransform`.
+
+    .. note:: If the input image is 2D, all axes should be in ``(0, 1)``.
     """
 
     def __init__(
@@ -35,24 +37,32 @@ class RandomFlip(RandomTransform):
     def apply_transform(self, sample: Subject) -> dict:
         axes_to_flip_hot = self.get_params(self.axes, self.flip_probability)
         random_parameters_dict = {'axes': axes_to_flip_hot}
-        if self.is_tensor:
-            return self.flip_dimensions(sample, axes_to_flip_hot)
-        else:
-            for image_dict in sample.get_images(intensity_only=False):
-                tensor = image_dict[DATA]
-                image_dict[DATA] = self.flip_dimensions(tensor, axes_to_flip_hot)
-            sample.add_transform(self, random_parameters_dict)
-            return sample
-
-    def flip_dimensions(self, tensor, axes_to_flip_hot):
-        dims = []
-        for dim, flip_this in enumerate(axes_to_flip_hot):
-            if not flip_this:
-                continue
-            actual_dim = dim + 1  # images are 4D
-            dims.append(actual_dim)
-        tensor = torch.flip(tensor, dims=dims)
-        return tensor
+        items = sample.get_images_dict(intensity_only=False).items()
+        for image_name, image_dict in items:
+            data = image_dict[DATA]
+            is_2d = data.shape[-3] == 1
+            dims = []
+            for dim, flip_this in enumerate(axes_to_flip_hot):
+                if not flip_this:
+                    continue
+                actual_dim = dim + 1  # images are 4D
+                # If the user is using 2D images and they use (0, 1) for axes,
+                # they probably mean (1, 2). This should make this transform
+                # more user-friendly.
+                if is_2d:
+                    actual_dim += 1
+                if actual_dim > 3:
+                    message = (
+                        f'Image "{image_name}" with shape {data.shape} seems to'
+                        ' be 2D, so all axes must be in (0, 1),'
+                        f' but they are {self.axes}'
+                    )
+                    raise RuntimeError(message)
+                dims.append(actual_dim)
+            data = torch.flip(data, dims=dims)
+            image_dict[DATA] = data
+        sample.add_transform(self, random_parameters_dict)
+        return sample
 
     @staticmethod
     def get_params(axes: Tuple[int, ...], probability: float) -> List[bool]:

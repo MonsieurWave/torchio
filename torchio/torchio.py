@@ -5,25 +5,6 @@ from typing import Union, Tuple, Callable
 import torch
 import numpy as np
 
-__all__ = [
-    'INTENSITY',
-    'LABEL',
-    'SAMPLING_MAP',
-    'PATH',
-    'TYPE',
-    'STEM',
-    'DATA',
-    'AFFINE',
-    'IMAGE',
-    'LOCATION',
-    'TypePath',
-    'TypeNumber',
-    'TypeData',
-    'TypeTuple',
-    'TypeCallable',
-    'TypeRangeInt',
-    'TypeRangeFloat',
-]
 
 # Image types
 INTENSITY = 'intensity'
@@ -41,11 +22,17 @@ AFFINE = 'affine'
 IMAGE = 'image'
 LOCATION = 'location'
 
+# In PyTorch convention
+CHANNELS_DIMENSION = 1
+
 # For typing hints
 TypePath = Union[Path, str]
 TypeNumber = Union[int, float]
 TypeData = Union[torch.Tensor, np.ndarray]
-TypeTuple = Union[int, Tuple[int, int, int]]
+TypeTripletInt = Tuple[int, int, int]
+TypeTripletFloat = Tuple[float, float, float]
+TypeTuple = Union[int, TypeTripletInt]
 TypeRangeInt = Union[int, Tuple[int, int]]
+TypePatchSize = Union[int, Tuple[int, int, int]]
 TypeRangeFloat = Union[float, Tuple[float, float]]
 TypeCallable = Callable[[torch.Tensor], torch.Tensor]

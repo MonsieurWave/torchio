@@ -6,7 +6,7 @@ import numpy as np
 import SimpleITK as sitk
 from ....data.subject import Subject
 from ....utils import to_tuple
-from ....torchio import LABEL, DATA, AFFINE, TYPE
+from ....torchio import INTENSITY, DATA, AFFINE, TYPE
 from .. import Interpolation, get_sitk_interpolator
 from .. import RandomTransform
 
@@ -46,9 +46,7 @@ class RandomElasticDeformation(RandomTransform):
             border of the coarse grid will also be set to ``0``.
             If ``2``, displacement of control points at the border of the image
             will also be set to ``0``.
-        image_interpolation: Value in
-            :py:class:`torchio.transforms.interpolation.Interpolation` (see
-            :ref:`Interpolation`).
+        image_interpolation: See :ref:`Interpolation`.
             Note that this is the interpolation used to compute voxel
             intensities when resampling using the dense displacement field.
             The value of the dense displacement at each voxel is always
@@ -114,7 +112,7 @@ class RandomElasticDeformation(RandomTransform):
             num_control_points: Union[int, Tuple[int, int, int]] = 7,
             max_displacement: Union[float, Tuple[float, float, float]] = 7.5,
             locked_borders: int = 2,
-            image_interpolation: Interpolation = Interpolation.LINEAR,
+            image_interpolation: str = 'linear',
             p: float = 1,
             seed: Optional[int] = None,
             is_tensor = False,
@@ -221,29 +219,22 @@ class RandomElasticDeformation(RandomTransform):
             self.max_displacement,
             self.num_locked_borders,
         )
-        random_parameters_dict = {'coarse_grid': bspline_params}
-        if not self.is_tensor:
-            sample.check_consistent_shape()
-            for image_dict in sample.get_images(intensity_only=False):
-                if image_dict[TYPE] == LABEL:
-                    interpolation = Interpolation.NEAREST
-                else:
-                    interpolation = self.interpolation
-                image_dict[DATA] = self.apply_bspline_transform(
-                    image_dict[DATA],
-                    image_dict[AFFINE],
-                    bspline_params,
-                    interpolation,
-                )
-            sample.add_transform(self, random_parameters_dict)
-        else:
-            sample = self.apply_bspline_transform(
-                sample,
-                np.identity(4),
+        for image in sample.get_images(intensity_only=False):
+            if image[TYPE] != INTENSITY:
+                interpolation = Interpolation.NEAREST
+            else:
+                interpolation = self.interpolation
+            if image.is_2d():
+                bspline_params[..., -3] = 0  # no displacement in LR axis
+            image[DATA] = self.apply_bspline_transform(
+                image[DATA],
+                image[AFFINE],
                 bspline_params,
                 self.interpolation
 
             )
+        random_parameters_dict = {'coarse_grid': bspline_params}
+        sample.add_transform(self, random_parameters_dict)
         return sample
 
     def apply_bspline_transform(
@@ -253,24 +244,7 @@ class RandomElasticDeformation(RandomTransform):
             bspline_params: np.ndarray,
             interpolation: Interpolation,
             ) -> torch.Tensor:
-        assert len(tensor) == 1
-        if len(tensor.shape) == 4:
-            tensor = self.bspline_transform(tensor, affine, bspline_params, interpolation)
-        elif len(tensor.shape) == 5:
-            for channel in range(tensor.shape[-1]):
-                tensor[..., channel] = self.bspline_transform(tensor[..., channel], affine, bspline_params, interpolation)
-        else:
-            raise Exception('Input dimension must be either (1, x, y, z) or (1, x, y, z, c)')
-        return tensor
-
-    def bspline_transform(
-            self,
-            tensor: torch.Tensor,
-            affine: np.ndarray,
-            bspline_params: np.ndarray,
-            interpolation: Interpolation,
-            ) -> torch.Tensor:
-        assert len(tensor.shape) == 4
+        assert tensor.dim() == 4
         assert len(tensor) == 1
         image = self.nib_to_sitk(tensor[0], affine)
         floating = reference = image
